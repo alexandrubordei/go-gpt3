@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/PullRequestInc/go-gpt3"
-	fakes "github.com/PullRequestInc/go-gpt3/go-gpt3fakes"
+	"github.com/alexandrubordei/go-gpt3"
+	fakes "github.com/alexandrubordei/go-gpt3/go-gpt3fakes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 )
