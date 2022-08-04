@@ -104,3 +104,70 @@ type SearchResponse struct {
 	Data   []SearchData `json:"data"`
 	Object string       `json:"object"`
 }
+
+type FileUploadResponse struct {
+	ID        string `json:"id"`
+	Object    string `json:"object"`
+	Bytes     int    `json:"bytes"`
+	CreatedAt int    `json:"created_at"`
+	FileName  string `json:"filename"`
+	Purpose   string `json:"purpose"`
+}
+
+type FileDeleteResponse struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Deleted bool   `json:"deleted"`
+}
+
+type FineTuneResponse struct {
+	ID              string  `json:"id"`
+	Object          string  `json:"object"`
+	Model           string  `json:"model"`
+	CreatedAt       int     `json:"created_at"`
+	Events          []Event `json:"events"`
+	TrainingFiles   []File  `json:"training_files"`
+	ResultFiles     []File  `json:"result_files"`
+	ValidationFiles []File  `json:"validation_files"`
+	UpdatedAt       int     `json:"updated_at"`
+	Status          string  `json:"status"`
+	OrganizationID  string  `json:"organization_id"`
+	HyperParams     HyperParams
+	FineTunedModel  *string `json:"fine_tuned_model"`
+}
+
+type HyperParams struct {
+	BatchSize              int     `json:"batch_size"`
+	LearningRateMultiplier float64 `json:"learning_rate_multiplier"`
+	NEpochs                int     `json:"n_epochs"`
+	PromptLessWeight       float64 `json:"prompt_loss_weight"`
+}
+
+type File struct {
+	ID        string `json:"id"`
+	Object    string `json:"object"`
+	Bytes     int    `json:"bytes"`
+	CreatedAt int    `json:"created_at"`
+	Filename  string `json:"filename"`
+	Purpose   string `json:"purpose"`
+}
+
+type Event struct {
+	Object    string `json:"object"`
+	CreatedAt int    `json:"created_at"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+}
+
+type FineTuneOptions struct {
+	TrainingFile                 string     `json:"training_file"`
+	BatchSize                    int        `json:"batch_size"`
+	LearningRateMultiplier       float64    `json:"learning_rate_multiplier"`
+	NEpochs                      int        `json:"n_epochs"`
+	PromptLessWeight             float64    `json:"prompt_loss_weight"`
+	ComputeClassificatioNMetrics bool       `json:"compute_classification_metrics"`
+	ClassificationNClasses       *int       `json:"classification_n_classes,omitempty"`
+	ClassificationPositiveClass  *string    `json:"classification_positive_class,omitempty"`
+	ClassificationBetas          *[]float64 `json:"classification_betas,omitempty"`
+	Suffix                       *string    `json:"suffix,omitempty"`
+}

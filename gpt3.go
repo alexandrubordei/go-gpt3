@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -29,6 +31,13 @@ const (
 	defaultBaseURL        = "https://api.openai.com/v1"
 	defaultUserAgent      = "go-gpt3"
 	defaultTimeoutSeconds = 30
+)
+
+const (
+	FineTunePurpose        = "fine-tune"
+	SearchPurpose          = "search"
+	AnswersPurpose         = "answers"
+	ClassificationsPurpose = "classifications"
 )
 
 func getEngineURL(engine string) string {
@@ -64,6 +73,21 @@ type Client interface {
 
 	// SearchWithEngine performs a semantic search over a list of documents with the specified engine.
 	SearchWithEngine(ctx context.Context, engine string, request SearchRequest) (*SearchResponse, error)
+
+	//UploadFile Uploads a file that contains document(s) to be used across various endpoints/features.
+	UploadFile(ctx context.Context, filename string, purpose string) (*FileUploadResponse, error)
+
+	//DeleteFile deletes a file from the server-side storage identified by id
+	DeleteFile(ctx context.Context, fileId string) (*FileDeleteResponse, error)
+
+	//CreateFineTune Creates a job that fine-tunes a specified model from a given dataset.
+	CreateFineTune(ctx context.Context, fileId string) (*FineTuneResponse, error)
+
+	//CreateFineTuneWithOptions Creates a job that fine-tunes a specified model from a given dataset.
+	CreateFineTuneWithOptions(ctx context.Context, fineTuneOptions FineTuneOptions) (*FineTuneResponse, error)
+
+	//GetFineTune Gets info about the fine-tune job.
+	GetFineTune(ctx context.Context, id string) (*FineTuneResponse, error)
 }
 
 type client struct {
@@ -224,6 +248,112 @@ func (c *client) SearchWithEngine(ctx context.Context, engine string, request Se
 	return output, nil
 }
 
+//UploadFile Uploads a file that contains document(s) to be used across various endpoints/features.
+func (c *client) UploadFile(ctx context.Context, filename string, purpose string) (*FileUploadResponse, error) {
+
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("file", file.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	io.Copy(part, file)
+
+	part, err = writer.CreateFormField("purpose")
+	if err != nil {
+		return nil, err
+	}
+	part.Write([]byte(purpose))
+	writer.Close()
+
+	url := c.baseURL + "/files"
+	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
+
+	resp, err := c.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	output := new(FileUploadResponse)
+	if err := getResponseObject(resp, output); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+//DeleteFile deletes a file
+func (c *client) DeleteFile(ctx context.Context, fileId string) (*FileDeleteResponse, error) {
+	req, err := c.newRequest(ctx, "DELETE", fmt.Sprintf("/files/%s", fileId), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	output := new(FileDeleteResponse)
+	if err := getResponseObject(resp, output); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+//CreateFineTune Creates a job that fine-tunes a specified model from a given dataset.
+func (c *client) CreateFineTune(ctx context.Context, training_file string) (*FineTuneResponse, error) {
+	payload := FineTuneOptions{
+		TrainingFile: training_file,
+	}
+	return c.CreateFineTuneWithOptions(ctx, payload)
+}
+
+//CreateFineTuneWithOptions Creates a job that fine-tunes a specified model from a given dataset.
+func (c *client) CreateFineTuneWithOptions(ctx context.Context, fineTuneOptions FineTuneOptions) (*FineTuneResponse, error) {
+
+	req, err := c.newRequest(ctx, "POST", "/fine-tunes", fineTuneOptions)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	output := new(FineTuneResponse)
+	if err := getResponseObject(resp, output); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
+//GetFineTune Gets info about the fine-tune job.
+func (c *client) GetFineTune(ctx context.Context, jobId string) (*FineTuneResponse, error) {
+	req, err := c.newRequest(ctx, "GET", fmt.Sprintf("/fine-tunes/%s", jobId), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	output := new(FineTuneResponse)
+	if err := getResponseObject(resp, output); err != nil {
+		return nil, err
+	}
+	return output, nil
+}
+
 func (c *client) performRequest(req *http.Request) (*http.Response, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -288,7 +418,7 @@ func (c *client) newRequest(ctx context.Context, method, path string, payload in
 	if err != nil {
 		return nil, err
 	}
-	if (len(c.idOrg) > 0) {
+	if len(c.idOrg) > 0 {
 		req.Header.Set("OpenAI-Organization", c.idOrg)
 	}
 	req.Header.Set("Content-type", "application/json")
