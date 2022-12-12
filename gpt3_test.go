@@ -1,4 +1,4 @@
-package gpt3_test
+package gpt3
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/alexandrubordei/go-gpt3"
 	fakes "github.com/alexandrubordei/go-gpt3/go-gpt3fakes"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
@@ -18,7 +17,7 @@ import (
 //go:generate go run github.com/maxbrunsfeld/counterfeiter/v6 net/http.RoundTripper
 
 func TestInitNewClient(t *testing.T) {
-	client := gpt3.NewClient("test-key")
+	client := NewClient("test-key")
 	assert.NotNil(t, client)
 }
 
@@ -32,7 +31,7 @@ func fakeHttpClient() (*fakes.FakeRoundTripper, *http.Client) {
 func TestRequestCreationFails(t *testing.T) {
 	ctx := context.Background()
 	rt, httpClient := fakeHttpClient()
-	client := gpt3.NewClient("test-key", gpt3.WithHTTPClient(httpClient))
+	client := NewClient("test-key", WithHTTPClient(httpClient))
 	rt.RoundTripReturns(nil, errors.New("request error"))
 
 	type testCase struct {
@@ -52,58 +51,58 @@ func TestRequestCreationFails(t *testing.T) {
 		{
 			"Engine",
 			func() (interface{}, error) {
-				return client.Engine(ctx, gpt3.DefaultEngine)
+				return client.Engine(ctx, DefaultEngine)
 			},
 			"Get \"https://api.openai.com/v1/engines/davinci\": request error",
 		},
 		{
 			"Completion",
 			func() (interface{}, error) {
-				return client.Completion(ctx, gpt3.CompletionRequest{})
+				return client.Completion(ctx, CompletionRequest{})
 			},
 			"Post \"https://api.openai.com/v1/engines/davinci/completions\": request error",
 		}, {
 			"CompletionStream",
 			func() (interface{}, error) {
-				var rsp *gpt3.CompletionResponse
-				onData := func(data *gpt3.CompletionResponse) {
+				var rsp *CompletionResponse
+				onData := func(data *CompletionResponse) {
 					rsp = data
 				}
-				return rsp, client.CompletionStream(ctx, gpt3.CompletionRequest{}, onData)
+				return rsp, client.CompletionStream(ctx, CompletionRequest{}, onData)
 			},
 			"Post \"https://api.openai.com/v1/engines/davinci/completions\": request error",
 		}, {
 			"CompletionWithEngine",
 			func() (interface{}, error) {
-				return client.CompletionWithEngine(ctx, gpt3.AdaEngine, gpt3.CompletionRequest{})
+				return client.CompletionWithEngine(ctx, AdaEngine, CompletionRequest{})
 			},
 			"Post \"https://api.openai.com/v1/engines/ada/completions\": request error",
 		}, {
 			"CompletionStreamWithEngine",
 			func() (interface{}, error) {
-				var rsp *gpt3.CompletionResponse
-				onData := func(data *gpt3.CompletionResponse) {
+				var rsp *CompletionResponse
+				onData := func(data *CompletionResponse) {
 					rsp = data
 				}
-				return rsp, client.CompletionStreamWithEngine(ctx, gpt3.AdaEngine, gpt3.CompletionRequest{}, onData)
+				return rsp, client.CompletionStreamWithEngine(ctx, AdaEngine, CompletionRequest{}, onData)
 			},
 			"Post \"https://api.openai.com/v1/engines/ada/completions\": request error",
 		}, {
 			"Edits",
 			func() (interface{}, error) {
-				return client.Edits(ctx, gpt3.EditsRequest{})
+				return client.Edits(ctx, EditsRequest{})
 			},
 			"Post \"https://api.openai.com/v1/edits\": request error",
 		}, {
 			"Search",
 			func() (interface{}, error) {
-				return client.Search(ctx, gpt3.SearchRequest{})
+				return client.Search(ctx, SearchRequest{})
 			},
 			"Post \"https://api.openai.com/v1/engines/davinci/search\": request error",
 		}, {
 			"SearchWithEngine",
 			func() (interface{}, error) {
-				return client.SearchWithEngine(ctx, gpt3.AdaEngine, gpt3.SearchRequest{})
+				return client.SearchWithEngine(ctx, AdaEngine, SearchRequest{})
 			},
 			"Post \"https://api.openai.com/v1/engines/ada/search\": request error",
 		},
@@ -127,7 +126,7 @@ func (errReader) Read(p []byte) (n int, err error) {
 func TestResponses(t *testing.T) {
 	ctx := context.Background()
 	rt, httpClient := fakeHttpClient()
-	client := gpt3.NewClient("test-key", gpt3.WithHTTPClient(httpClient))
+	client := NewClient("test-key", WithHTTPClient(httpClient))
 
 	type testCase struct {
 		name           string
@@ -141,9 +140,9 @@ func TestResponses(t *testing.T) {
 			func() (interface{}, error) {
 				return client.Engines(ctx)
 			},
-			&gpt3.EnginesResponse{
-				Data: []gpt3.EngineObject{
-					gpt3.EngineObject{
+			&EnginesResponse{
+				Data: []EngineObject{
+					{
 						ID:     "123",
 						Object: "list",
 						Owner:  "owner",
@@ -155,9 +154,9 @@ func TestResponses(t *testing.T) {
 		{
 			"Engine",
 			func() (interface{}, error) {
-				return client.Engine(ctx, gpt3.DefaultEngine)
+				return client.Engine(ctx, DefaultEngine)
 			},
-			&gpt3.EngineObject{
+			&EngineObject{
 				ID:     "123",
 				Object: "list",
 				Owner:  "owner",
@@ -167,15 +166,15 @@ func TestResponses(t *testing.T) {
 		{
 			"Completion",
 			func() (interface{}, error) {
-				return client.Completion(ctx, gpt3.CompletionRequest{})
+				return client.Completion(ctx, CompletionRequest{})
 			},
-			&gpt3.CompletionResponse{
+			&CompletionResponse{
 				ID:      "123",
 				Object:  "list",
 				Created: 123456789,
 				Model:   "davinci-12",
-				Choices: []gpt3.CompletionResponseChoice{
-					gpt3.CompletionResponseChoice{
+				Choices: []CompletionResponseChoice{
+					{
 						Text:         "output",
 						FinishReason: "stop",
 					},
@@ -184,25 +183,25 @@ func TestResponses(t *testing.T) {
 		}, {
 			"CompletionStream",
 			func() (interface{}, error) {
-				var rsp *gpt3.CompletionResponse
-				onData := func(data *gpt3.CompletionResponse) {
+				var rsp *CompletionResponse
+				onData := func(data *CompletionResponse) {
 					rsp = data
 				}
-				return rsp, client.CompletionStream(ctx, gpt3.CompletionRequest{}, onData)
+				return rsp, client.CompletionStream(ctx, CompletionRequest{}, onData)
 			},
 			nil, // streaming responses are tested separately
 		}, {
 			"CompletionWithEngine",
 			func() (interface{}, error) {
-				return client.CompletionWithEngine(ctx, gpt3.AdaEngine, gpt3.CompletionRequest{})
+				return client.CompletionWithEngine(ctx, AdaEngine, CompletionRequest{})
 			},
-			&gpt3.CompletionResponse{
+			&CompletionResponse{
 				ID:      "123",
 				Object:  "list",
 				Created: 123456789,
 				Model:   "davinci-12",
-				Choices: []gpt3.CompletionResponseChoice{
-					gpt3.CompletionResponseChoice{
+				Choices: []CompletionResponseChoice{
+					{
 						Text:         "output",
 						FinishReason: "stop",
 					},
@@ -211,21 +210,21 @@ func TestResponses(t *testing.T) {
 		}, {
 			"CompletionStreamWithEngine",
 			func() (interface{}, error) {
-				var rsp *gpt3.CompletionResponse
-				onData := func(data *gpt3.CompletionResponse) {
+				var rsp *CompletionResponse
+				onData := func(data *CompletionResponse) {
 					rsp = data
 				}
-				return rsp, client.CompletionStreamWithEngine(ctx, gpt3.AdaEngine, gpt3.CompletionRequest{}, onData)
+				return rsp, client.CompletionStreamWithEngine(ctx, AdaEngine, CompletionRequest{}, onData)
 			},
 			nil, // streaming responses are tested separately
 		}, {
 			"Search",
 			func() (interface{}, error) {
-				return client.Search(ctx, gpt3.SearchRequest{})
+				return client.Search(ctx, SearchRequest{})
 			},
-			&gpt3.SearchResponse{
-				Data: []gpt3.SearchData{
-					gpt3.SearchData{
+			&SearchResponse{
+				Data: []SearchData{
+					{
 						Document: 1,
 						Object:   "search_result",
 						Score:    40.312,
@@ -235,11 +234,11 @@ func TestResponses(t *testing.T) {
 		}, {
 			"SearchWithEngine",
 			func() (interface{}, error) {
-				return client.SearchWithEngine(ctx, gpt3.AdaEngine, gpt3.SearchRequest{})
+				return client.SearchWithEngine(ctx, AdaEngine, SearchRequest{})
 			},
-			&gpt3.SearchResponse{
-				Data: []gpt3.SearchData{
-					gpt3.SearchData{
+			&SearchResponse{
+				Data: []SearchData{
+					{
 						Document: 1,
 						Object:   "search_result",
 						Score:    40.312,
@@ -276,8 +275,8 @@ func TestResponses(t *testing.T) {
 					assert.EqualError(t, err, fmt.Sprintf("[%d:Unexpected] unknown error", code))
 
 					// then mock with an json APIErrorResponse
-					apiErrorResponse := &gpt3.APIErrorResponse{
-						Error: gpt3.APIError{
+					apiErrorResponse := &APIErrorResponse{
+						Error: APIError{
 							Type:    "test_type",
 							Message: "test message",
 						},
@@ -331,6 +330,26 @@ func TestResponses(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testEmbeddings(t *testing.T) {
+	ctx := context.Background()
+	rt, httpClient := fakeHttpClient()
+	client := NewClient("test-key", WithHTTPClient(httpClient))
+
+	mockResponse := &http.Response{
+		StatusCode: 200,
+		Body:       ioutil.NopCloser(bytes.NewBufferString("invalid json")),
+	}
+
+	rt.RoundTripReturns(mockResponse, nil)
+
+	documents := []string{
+		"text1",
+		"text2",
+	}
+	client.CreateEmbeddings(ctx, TextSearchAdaDoc001, documents)
+
 }
 
 // TODO: add streaming response tests
