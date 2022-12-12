@@ -36,7 +36,9 @@ type EnginesResponse struct {
 type CompletionRequest struct {
 	// A list of string prompts to use.
 	// TODO there are other prompt types here for using token integers that we could add support for.
-	Prompt []string `json:"prompt"`
+	Prompt string `json:"prompt"`
+	//for edits
+	Suffix *string `json:"suffix"`
 	// How many tokens to complete up to. Max of 512
 	MaxTokens *int `json:"max_tokens,omitempty"`
 	// Sampling temperature to use
@@ -207,4 +209,29 @@ type FineTuneOptions struct {
 	ClassificationPositiveClass  *string    `json:"classification_positive_class,omitempty"`
 	ClassificationBetas          *[]float64 `json:"classification_betas,omitempty"`
 	Suffix                       *string    `json:"suffix,omitempty"`
+}
+
+type EmbeddingsRequest struct {
+	Model string   `json:"model"`
+	Input []string `json:"input"`
+	User  string   `json:"user"`
+}
+
+type EmbeddingsResponse struct {
+	Object string                  `json:"object"`
+	Usage  EmbeddingsResponseUsage `json:"usage"`
+	Data   []Embedding             `json:"data"`
+}
+
+// EmbeddingsResponseUsage is a structure used in the response from a request to the edits API
+type EmbeddingsResponseUsage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
+type Embedding struct {
+	Object    string    `json:"object"`
+	Embedding []float64 `json:"embedding"`
+	Index     int       `json:"index"`
 }
